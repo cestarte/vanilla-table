@@ -25,6 +25,60 @@ class VanillaTable {
         this.$selectedCell = null
     }
 
+    insertTemplates() {
+        const tableTemplate = `
+            <template id="table-template">
+                <table class="table is-striped is-fullwidth" id="observation-table">
+                    <thead>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </template>
+        `
+
+        const tablePaginationTemplate = `
+            <template id="table-pagination-template">
+                <p class="mt-1">
+                    Page <span name="current-page"></span> of <span name="total_pages"></span>.
+                    Showing <span name="results_on_this_page"></span> of <span name="total_results"></span> results.
+                </p>
+                <nav class="pagination" role="navigation" aria-label="pagination">
+                    <a href="#" class="pagination-previous">Previous</a>
+                    <a href="#" class="pagination-next">Next page</a>
+
+                    <ul class="pagination-list">
+                        <li>
+                            <input type="input" type="number" class="input" value="" name="page-input" size="3" />
+                        </li>
+                        <li>
+                            <a href="#" class="pagination-link" name="go" aria-label="Go to page">Go</a>
+                        </li>
+                    </ul>
+            </template>
+        `
+
+        const tableSearchTemplate = `
+            <template id="table-search-template">
+                <div class="grid mb-1">
+                    <div class="cell">
+                    </div>
+                    <div class="cell">
+                    </div>
+                    <div class="cell">
+                        <input type="text" name="search-input" class="input" placeholder="Search..." value="" />
+                    </div>
+                </div>
+            </template>
+        `
+
+
+
+        document.body.insertAdjacentHTML(tableTemplate)
+        document.body.insertAdjacentHTML(tablePaginationTemplate)
+        document.body.insertAdjacentHTML(tableSearchTemplate)
+    }
+
     setSelectedCellByElem($cell) {
         if ($cell) {
             let row = $cell.getAttribute('data-row')
@@ -70,56 +124,66 @@ class VanillaTable {
                 if (this.$selectedCell) {
                     const row = this.$selectedCell.getAttribute('data-row')
                     const col = this.$selectedCell.getAttribute('data-col')
-                    console.log(`Enter key pressed while (${row}, ${col}) is selected.`)
+                    //console.log(`Enter key pressed while (${row}, ${col}) is selected.`)
 
                     const editable = this.$selectedCell.getAttribute('data-editable') === 'true'
                     if (editable) {
-                        console.log('this cell is editable')
+                        //console.log('this cell is editable')
                         const val = this.$selectedCell.getAttribute('data-value')
-                        this.$selectedCell.innerHTML = '<input type="text" class="input is-small" style="min-width: 20px" value="' + val + '">'
-                        this.$selectedCell.querySelector('input').focus()
-
+                        this.$selectedCell.focus()
                     }
                 } else {
-                    console.log('Enter key pressed but no cell is selected.')
+                    //console.log('Enter key pressed but no cell is selected.')
                 }
                 break
             case "Escape":
-                console.log('Escape key pressed.')
+                //console.log('Escape key pressed.')
                 self.setSelectedCell(0, 0)
                 break
             case "ArrowUp":
                 if (this.$selectedCell) {
                     const $thisRow = this.$selectedCell.parentElement
-                    const $rowBefore = $thisRow.previousElementSibling
+                    let $rowAbove = $thisRow.previousElementSibling
 
-                    if ($rowBefore) {
+                    while ($rowAbove) {
                         const col = this.$selectedCell.getAttribute('data-col')
-                        const $cellAbove = $rowBefore.querySelector(`td[data-col="${col}"]`)
+                        const $cellAbove = $rowAbove.querySelector(`td[data-col="${col}"]`)
+
                         if ($cellAbove) {
                             const selectable = $cellAbove.getAttribute('data-selectable') !== 'false'
-                            if (selectable) {
+                            const rowIsVisible = $rowAbove.style.display !== 'none'
+
+                            if (selectable && rowIsVisible) {
                                 this.setSelectedCellByElem($cellAbove)
                                 this.scrollIntoViewIfNeeded($cellAbove)
+                                break
                             }
                         }
+
+                        $rowAbove = $rowAbove.previousElementSibling
                     }
                 }
                 break
             case "ArrowDown":
                 if (this.$selectedCell) {
                     const $thisRow = this.$selectedCell.parentElement
-                    const $rowAfter = $thisRow.nextElementSibling
-                    if ($rowAfter) {
+                    let $rowBelow = $thisRow.nextElementSibling
+
+                    while ($rowBelow) {
                         const col = this.$selectedCell.getAttribute('data-col')
-                        const $cellBelow = $rowAfter.querySelector(`td[data-col="${col}"]`)
+                        const $cellBelow = $rowBelow.querySelector(`td[data-col="${col}"]`)
                         if ($cellBelow) {
                             const selectable = $cellBelow.getAttribute('data-selectable') !== 'false'
-                            if (selectable) {
+                            const rowIsVisible = $rowBelow.style.display !== 'none'
+                            if (selectable && rowIsVisible) {
+                                console.log('is visible and selectable')
                                 this.setSelectedCellByElem($cellBelow)
                                 this.scrollIntoViewIfNeeded($cellBelow)
+                                break
                             }
                         }
+
+                        $rowBelow = $rowBelow.nextElementSibling
                     }
                 }
                 break
@@ -130,7 +194,8 @@ class VanillaTable {
                     // keep searching left until we find a selectable cell
                     while ($cellLeft) {
                         const selectable = $cellLeft.getAttribute('data-selectable') !== 'false'
-                        if (selectable !== false) {
+                        const isCellVisible = $cellLeft.style.display !== 'none'
+                        if (selectable !== false && isCellVisible) {
                             this.setSelectedCellByElem($cellLeft)
                             this.scrollIntoViewIfNeeded($cellLeft)
                             break
@@ -147,7 +212,8 @@ class VanillaTable {
                     // keep searching right until we find a selectable cell
                     while ($cellRight) {
                         const selectable = $cellRight.getAttribute('data-selectable') !== 'false'
-                        if (selectable !== false) {
+                        const isCellVisible = $cellRight.style.display !== 'none'
+                        if (selectable !== false && isCellVisible) {
                             this.setSelectedCellByElem($cellRight)
                             this.scrollIntoViewIfNeeded($cellRight)
                             break
@@ -248,10 +314,23 @@ class VanillaTable {
 
                 if (column.selectable === false)
                     $td.setAttribute('data-selectable', column.selectable)
-                if (column.editable) {
-                    console.log('setting editable', column.name)
-                    $td.setAttribute('data-editable', column.editable)
+                if (column.editable === true && column.onEdit) {
+                    //console.log('setting editable', column.name)
+
+                    $td.setAttribute('data-editable', 'true')
+                    $td.setAttribute('contenteditable', 'true')
                     $td.setAttribute('data-value', record[column.name])
+
+                    let self = this
+                    $td.addEventListener('input', function (e, fn = column.onEdit, name = column.name, oldValue = record[column.name], r = row, c = col) {
+                        // console.log(e)
+                        // console.log('name', name)
+                        // console.log('oldValue', oldValue)
+                        // console.log('newValue', e.target.innerText)
+                        // console.log('row,col', r, c)
+                        // console.log('fn', fn)
+                        self.processEdit(name, oldValue, e.target.innerText, r, c, fn)
+                    })
                 }
 
                 if (column.custom_body) {
@@ -378,7 +457,7 @@ class VanillaTable {
             });
         }
 
-        // If only 1 page, disable the input 
+        // If only 1 page, disable the input
         if (data.meta.total_pages <= 1) {
             $pageInput.setAttribute('disabled', '')
             $goButton.setAttribute('disabled', '')
@@ -445,6 +524,7 @@ class VanillaTable {
     }
 
     processSearch = this.debounce((term) => this.refreshTable(term))
+    processEdit = this.debounce((name, oldValue, newValue, row, col, fn) => fn(name, oldValue, newValue, row, col))
 }
 
 // refreshTable(null, { 'page': 1, 'results_per_page': 15 })
